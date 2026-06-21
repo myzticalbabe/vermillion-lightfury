@@ -1,0 +1,107 @@
+# Vermillion LightFury — GitLab CI
+# Phase 13.6: Python 3.14t free-threaded ONLY — matches the project's canonical
+# interpreter. Strict-markers + slow/not-slow marker split.
+#
+# Triggers:
+#   - MR / push to main: tests-fast job runs -m "not slow"
+#   - Weekly nightly schedule + manual trigger: tests-slow job runs -m slow
+---
+stages:
+  - lint
+  - test-fast
+  - test-slow
+
+# ── Global variables ──────────────────────────────────────────────────────────
+variables:
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+  PYTEST_BASE_ARGS: "--strict-markers -p no:cacheprovider --tb=short"
+
+# Cache pip wheels keyed on requirements file hash + .gitlab-ci.yml hash.
+# Reduces install time from ~3min → ~30s on warm runs.
+cache:
+  key:
+    files:
+      - requirements.txt
+      - pyproject.toml
+      - .gitlab-ci.yml
+  paths:
+    - .cache/pip
+    - venv/
+
+# ── Workflow rules ────────────────────────────────────────────────────────────
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    # Weekly nightly schedule (Sunday 02:00 UTC = Sat evening US time)
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'   # manual trigger
+
+# ── Stage: lint — byte-compile + AST audit pre-flight ─────────────────────────
+# Catches syntax regressions and the Phase 13.1 latent-bug-class (`from exceptions
+# import X`) BEFORE the test matrix spins up.
+lint:syntax:
+  stage: lint
+  image: python:3.14t
+  script:
+    - python -m pip install --quiet --upgrade pip
+    # Byte-compile every .py file; non-zero exit == syntax regression caught early.
+    - python -c "import compileall, sys; sys.exit(0 if compileall.compile_dir('.', quiet=1) else 1)"
+    # AST audit — locks in the Phase 13.1 fix (no bare `from exceptions` anywhere).
+    - python -c "import ast, pathlib; bad=[p for p in pathlib.Path('.').rglob('*.py') if any(isinstance(n, ast.ImportFrom) and n.module=='exceptions' for n in ast.walk(ast.parse(p.read_text())))]; import sys; sys.exit(1 if bad else 0)"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+# ── Stage: test-fast — PR / push feedback (3.14t) ────────────────────────────
+# Runs -m "not slow": pytest fast feedback (~60s on 3.14t).
+test-fast:python-314t:
+  stage: test-fast
+  image: python:3.14t
+  before_script:
+    - python -m pip install --quiet --upgrade pip
+    - python -m pip install --quiet pytest pytest-xdist hypothesis
+  script:
+    # quick import smoke — catches Phase 13.1 latent-bug regressions EARLY,
+    # before full pytest suite startup.
+    - python -c "from worms import NmapScanner, KaliHealth, MetasploitBridge, WSLRecovery, BenchmarkWorm"
+    - python -c "from config.shared_dir import SharedDirManager"
+    # full fast suite
+    - python -m pytest tests/ -m "not slow" $PYTEST_BASE_ARGS -v
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: junit-fast.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+
+# ── Stage: test-slow — nightly coverage (3.14t) ──────────────────────────────
+# Runs -m slow ONLY: the 8 hypothesis + subprocess-cli rage tests.
+# NOT triggered on every MR — saves CI minutes during PR iteration.
+# Triggered by:
+#   - weekly schedule (Sunday 02:00 UTC)
+#   - manual pipeline trigger (web UI)
+#   - manual `when: manual` on push to main
+test-slow:python-314t:
+  stage: test-slow
+  image: python:3.14t
+  before_script:
+    - python -m pip install --quiet --upgrade pip
+    - python -m pip install --quiet pytest pytest-xdist hypothesis
+  script:
+    - python -m pytest tests/ -m slow $PYTEST_BASE_ARGS -v
+  artifacts:
+    when: always
+    expire_in: 30 days
+    reports:
+      junit: junit-slow.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual

@@ -1,0 +1,151 @@
+# Vermillion LightFury — GitHub Actions CI
+# Phase 13.6: Python 3.14t free-threaded ONLY (matches the project's
+# canonical interpreter). Strict-markers + slow/not-slow marker split.
+# Triggers:
+#   - PR / push to main: PR-fast job runs -m "not slow" for fast feedback
+#   - Nightly cron + manual workflow_dispatch: nightly-slow job runs -m slow
+---
+name: Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  # Nightly schedule (UTC 02:00 = ~mid-day in user's evening Windows time)
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: "Optional: 'slow' to run slow-only on demand"
+        required: false
+        default: ""
+
+# Workflow-level concurrency intentionally NOT set: doing so would cancel
+# an in-progress nightly cron when a coincidental PR push lands on the
+# same `github.ref` group key. PR-fast job scopes its own concurrency
+# group further down so iterative PR pushes cancel each other cheaply
+# while nightly-slow is allowed to run to completion.
+
+jobs:
+  # ───── PR / Fast job: pytest -m "not slow" --strict-markers ─────────────
+  pr-fast:
+    name: "PR-fast (${{ matrix.os }} · py${{ matrix.python-version }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false   # show all matrix cell results, don't bail at first
+      matrix:
+        os: [ubuntu-latest]
+        # 3.14t ONLY — the project's canonical interpreter. SF9 (test_property_fuzz)
+        # is gated on Py_GIL_DISABLED so it doesn't run on stock Python.
+        python-version: ["3.14t"]
+
+    # PR-fast scope: cancel any in-progress run on the same branch when a
+    # new PR commit lands (saves CI minutes during iterative development).
+    # Scoped to this job only — nightly-slow runs to completion.
+    concurrency:
+      group: pr-fast-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }} (free-threaded interpreter)
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          # 3.14t requires the free-threaded experimental interpreter.
+          # Hard-coded `true` (vs the conditional `${{ matrix.python-version == '3.14t' }}`)
+          # because Phase 13.6 closed with "3.14t only" matrix per user directive.
+          # If a future phase adds Python 3.13 or any stock-Python cell, revert to
+          # the conditional form to keep the matrix composable per-version.
+          free-threaded: true
+          # Cache pip wheels keyed on Python version + requirements file
+          cache: pip
+          cache-dependency-path: |
+            requirements*.txt
+            pyproject.toml
+            setup.py
+
+      - name: Install dependencies
+        # hypothesis 6.155.6+ is required by tests/test_property_fuzz.py.
+        # If a frozen requirements file exists in the future, prefer that.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-xdist hypothesis
+
+      - name: Quick smoke (worm imports + 31-char session_id invariant)
+        run: |
+          python -c "from worms import NmapScanner, KaliHealth, MetasploitBridge, WSLRecovery, BenchmarkWorm"
+          python -c "from config.shared_dir import SharedDirManager"
+
+      - name: Pytest — fast suite (--strict-markers + -m 'not slow')
+        # --strict-markers: any unregistered marker is a hard error.
+        # pyargs=False: prevent "no module named 'tests'" surprises.
+        # -p no:cacheprovider: don't pollute the GH Actions cache.
+        # -m "not slow" deselects the 8 slow tests so PR feedback is <60s.
+        run: |
+          python -m pytest tests/ \
+            -m "not slow" \
+            --strict-markers \
+            -p no:cacheprovider \
+            --tb=short \
+            -v
+
+  # ───── Nightly job: pytest -m slow (the 8 hypothesis / subprocess rage tests) ─
+  nightly-slow:
+    name: "Nightly-slow (${{ matrix.os }} · py${{ matrix.python-version }})"
+    # Only run on:
+    #   - cron schedule (the daily 02:00 UTC trigger above)
+    #   - manual workflow_dispatch
+    # NOT on every PR — slow tests can take 5–10 minutes per matrix cell.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # 3.14t ONLY — slow tests include concurrent barrier-sync which only runs on free-threaded.
+        python-version: ["3.14t"]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }} (free-threaded interpreter)
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          free-threaded: true
+          cache: pip
+          cache-dependency-path: |
+            requirements*.txt
+            pyproject.toml
+            setup.py
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-xdist hypothesis
+
+      - name: Pytest — slow suite ONLY (-m slow)
+        # Per reviewer finding: the slow tests deliberately take longer
+        # (1000-iter session_id fuzz, 500-thread lock stress, subprocess
+        # CLI fuzz across 5 worms × 3 arg types). They guard regressions
+        # that the fast suite can't surface.
+        run: |
+          python -m pytest tests/ \
+            -m slow \
+            --strict-markers \
+            -p no:cacheprovider \
+            --tb=short \
+            -v
+
+      - name: Upload nightly artifact — pytest junit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-slow-${{ matrix.python-version }}-${{ matrix.os }}
+          path: junit-slow.xml
+          if-no-files-found: ignore
