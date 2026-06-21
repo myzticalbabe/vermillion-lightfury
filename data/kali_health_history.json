@@ -1,69 +1,5 @@
 [
   {
-    "timestamp": "2026-06-20T05:51:04.920422",
-    "overall_health": "warning",
-    "drive": {
-      "drive": "E:",
-      "total_gb": 96.88,
-      "free_gb": 1.29,
-      "used_pct": 98.7,
-      "filesystem": "9p",
-      "alert": "warning"
-    },
-    "vhdx": {
-      "path": "/mnt/e/Kali/ext4.vhdx",
-      "size_gb": 93.74,
-      "last_modified": "2026-06-20T05:51:04.907851",
-      "growth_mb": 0.2,
-      "alert": "ok"
-    },
-    "kali_process": {
-      "ram_total_gb": 7.44,
-      "ram_used_pct": 37.6,
-      "cpu_pct": 3.4,
-      "uptime_min": 301.3,
-      "alert": "ok"
-    },
-    "alerts": [
-      "WARNING: E: only 1.29 GB free \u2014 running low"
-    ],
-    "recommendations": [
-      "Consider compacting VHDX or migrating log files to G: drive"
-    ]
-  },
-  {
-    "timestamp": "2026-06-20T05:51:04.946898",
-    "overall_health": "warning",
-    "drive": {
-      "drive": "E:",
-      "total_gb": 96.88,
-      "free_gb": 1.29,
-      "used_pct": 98.7,
-      "filesystem": "9p",
-      "alert": "warning"
-    },
-    "vhdx": {
-      "path": "/mnt/e/Kali/ext4.vhdx",
-      "size_gb": 93.74,
-      "last_modified": "2026-06-20T05:51:04.939143",
-      "growth_mb": 0.2,
-      "alert": "ok"
-    },
-    "kali_process": {
-      "ram_total_gb": 7.44,
-      "ram_used_pct": 37.6,
-      "cpu_pct": 3.4,
-      "uptime_min": 301.3,
-      "alert": "ok"
-    },
-    "alerts": [
-      "WARNING: E: only 1.29 GB free \u2014 running low"
-    ],
-    "recommendations": [
-      "Consider compacting VHDX or migrating log files to G: drive"
-    ]
-  },
-  {
     "timestamp": "2026-06-20T05:51:08.508244",
     "overall_health": "warning",
     "drive": {
@@ -3223,6 +3159,70 @@
       "ram_used_pct": 35.3,
       "cpu_pct": 3.6,
       "uptime_min": 444.1,
+      "alert": "ok"
+    },
+    "alerts": [
+      "WARNING: E: only 1.29 GB free \u2014 running low"
+    ],
+    "recommendations": [
+      "Consider compacting VHDX or migrating log files to G: drive"
+    ]
+  },
+  {
+    "timestamp": "2026-06-21T06:44:09.136932",
+    "overall_health": "warning",
+    "drive": {
+      "drive": "E:",
+      "total_gb": 96.88,
+      "free_gb": 1.29,
+      "used_pct": 98.7,
+      "filesystem": "9p",
+      "alert": "warning"
+    },
+    "vhdx": {
+      "path": "/mnt/e/Kali/ext4.vhdx",
+      "size_gb": 93.74,
+      "last_modified": "2026-06-21T06:44:09.007808",
+      "growth_mb": 0.2,
+      "alert": "ok"
+    },
+    "kali_process": {
+      "ram_total_gb": 7.44,
+      "ram_used_pct": 35.7,
+      "cpu_pct": 5.4,
+      "uptime_min": 448.1,
+      "alert": "ok"
+    },
+    "alerts": [
+      "WARNING: E: only 1.29 GB free \u2014 running low"
+    ],
+    "recommendations": [
+      "Consider compacting VHDX or migrating log files to G: drive"
+    ]
+  },
+  {
+    "timestamp": "2026-06-21T06:44:28.788550",
+    "overall_health": "warning",
+    "drive": {
+      "drive": "E:",
+      "total_gb": 96.88,
+      "free_gb": 1.29,
+      "used_pct": 98.7,
+      "filesystem": "9p",
+      "alert": "warning"
+    },
+    "vhdx": {
+      "path": "/mnt/e/Kali/ext4.vhdx",
+      "size_gb": 93.74,
+      "last_modified": "2026-06-21T06:44:28.322529",
+      "growth_mb": 0.2,
+      "alert": "ok"
+    },
+    "kali_process": {
+      "ram_total_gb": 7.44,
+      "ram_used_pct": 35.5,
+      "cpu_pct": 4.7,
+      "uptime_min": 448.4,
       "alert": "ok"
     },
     "alerts": [

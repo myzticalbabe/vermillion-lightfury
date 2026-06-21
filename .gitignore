@@ -1,0 +1,39 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.class
+
+# Hypothesis
+.hypothesis/
+
+# Pytest
+.pytest_cache/
+
+# Runtime data (logs, benchmarks, health history)
+logs/
+benchmarks/benchmark_results.json
+benchmarks/benchmark_history.json
+benchmarks/benchmark_dashboard.html
+data/kali_health_history.json
+data/wsl_recovery_history.json
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Nuitka builds
+*.exe
+*.dist/
+*.build/
+
+# Temp
+*.tmp
+*.log
