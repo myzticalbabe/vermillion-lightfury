@@ -37,3 +37,9 @@ desktop.ini
 # Temp
 *.tmp
 *.log
+.requiem/
+
+# Build noise: never track bytecode or per-machine run logs
+__pycache__/
+*.pyc
+data/kali_health_history.json
